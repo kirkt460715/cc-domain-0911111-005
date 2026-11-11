@@ -24,10 +24,19 @@ CREATE TABLE IF NOT EXISTS quality_rules(
 CREATE TABLE IF NOT EXISTS work_orders(
  order_id TEXT PRIMARY KEY,revision INTEGER NOT NULL,aircraft TEXT NOT NULL,component TEXT NOT NULL,
  opened_at TEXT NOT NULL,closed_at TEXT NOT NULL,issue TEXT NOT NULL,resolution TEXT NOT NULL,
- state TEXT NOT NULL,payload_hash TEXT NOT NULL,updated_at TEXT NOT NULL);
+ state TEXT NOT NULL,order_type TEXT,payload_hash TEXT NOT NULL,updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS order_versions(
  order_id TEXT NOT NULL,revision INTEGER NOT NULL,payload TEXT NOT NULL,
  PRIMARY KEY(order_id,revision));
+CREATE TABLE IF NOT EXISTS aircraft_registry(
+ aircraft TEXT PRIMARY KEY,aircraft_type TEXT NOT NULL,revision INTEGER NOT NULL,
+ created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS effectiveness_studies(
+ study_id TEXT PRIMARY KEY,revision INTEGER NOT NULL,request TEXT NOT NULL,request_digest TEXT NOT NULL,
+ digest TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS effectiveness_versions(
+ study_id TEXT NOT NULL,revision INTEGER NOT NULL,payload TEXT NOT NULL,digest TEXT NOT NULL,
+ created_at TEXT NOT NULL,PRIMARY KEY(study_id,revision));
 CREATE TABLE IF NOT EXISTS batches(
  batch_id TEXT PRIMARY KEY,source TEXT NOT NULL,content_hash TEXT NOT NULL,
  format TEXT NOT NULL,state TEXT NOT NULL,revision INTEGER NOT NULL,
@@ -84,7 +93,13 @@ class Database:
             self.db.close()
             fail('schema_version', 'Unsupported database version', version=version)
         self.db.executescript(SCHEMA)
+        self._migrate()
         self.db.execute('PRAGMA user_version=1')
+
+    def _migrate(self):
+        columns = {row[1] for row in self.db.execute('PRAGMA table_info(work_orders)')}
+        if 'order_type' not in columns:
+            self.db.execute('ALTER TABLE work_orders ADD COLUMN order_type TEXT')
 
     def __enter__(self):
         return self

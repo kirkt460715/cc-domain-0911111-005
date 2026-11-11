@@ -17,6 +17,9 @@ def overview(db):
         'quarantine': review.reason_counts(db),
         'stale_calibrations': len(recalibration.stale_observations(db)),
         'releases': db.scalar("SELECT COUNT(*) FROM releases WHERE state='committed'"),
+        'effectiveness_studies': db.scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='effectiveness_studies'"
+        ) and db.scalar('SELECT COUNT(*) FROM effectiveness_studies'),
     }
 
 
@@ -49,6 +52,15 @@ def check(db):
             expected_key = partitions.key(device['aircraft'], row['event_time'][:10])
             if db.one('SELECT partition_key FROM partitions WHERE partition_key=?', (expected_key,)) is None:
                 errors.append({'code': 'observation_partition', 'observation_id': row['observation_id']})
+        if db.one("SELECT name FROM sqlite_master WHERE type='table' AND name='effectiveness_versions'"):
+            for row in db.all('SELECT * FROM effectiveness_versions ORDER BY study_id,revision'):
+                try:
+                    value = json.loads(row['payload'])
+                except ValueError:
+                    errors.append({'code': 'study_json', 'study_id': row['study_id'], 'revision': row['revision']})
+                    continue
+                if digest({key: item for key, item in value.items() if key != 'digest'}) != row['digest']:
+                    errors.append({'code': 'study_digest', 'study_id': row['study_id'], 'revision': row['revision']})
         return {'ok': not errors, 'errors': errors, 'database': database, 'journal': chain}
 
 

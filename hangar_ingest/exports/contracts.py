@@ -19,9 +19,9 @@ CREATE TABLE IF NOT EXISTS acceptance_reports(
 class DeliveryContracts:
     def __init__(self, db):
         self.db = db
-        if db.depth:
-            fail('transaction_scope', 'Initialize delivery contracts outside transaction')
-        db.db.executescript(SCHEMA)
+        # executescript implicitly commits and would break Application.batch atomicity.
+        for statement in (part.strip() for part in SCHEMA.split(';') if part.strip()):
+            db.execute(statement)
 
     def configure(self, contract_id, revision, aircraft, metrics, *, min_samples=1, max_quarantine_ratio='0', require_closed_orders=True, required_evidence=None):
         identity(contract_id, 'contract_id')

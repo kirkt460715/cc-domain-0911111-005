@@ -3,17 +3,20 @@ import json
 from hangar_ingest.types import canonical, digest, fail, identity, instant, integer, object_fields, text
 from hangar_ingest.runs import journal
 
-FIELDS = {'order_id', 'revision', 'aircraft', 'component', 'opened_at', 'closed_at', 'issue', 'resolution', 'state'}
+FIELDS = {'order_id', 'revision', 'aircraft', 'component', 'opened_at', 'closed_at', 'issue', 'resolution', 'state', 'order_type'}
 
 
 def normalize(value):
-    object_fields(value, FIELDS)
+    object_fields(value, FIELDS - {'order_type'}, {'order_type'})
     start = instant(value['opened_at'], 'opened_at')
     end = instant(value['closed_at'], 'closed_at')
     if start >= end:
         fail('order_interval', 'Work order must have a nonempty interval')
     if value['state'] not in {'open', 'closed', 'cancelled'}:
         fail('order_state', 'Unknown work order state')
+    order_type = value.get('order_type')
+    if order_type is not None:
+        order_type = text(order_type, 'order_type', 120)
     return {
         'order_id': identity(value['order_id'], 'order_id'),
         'revision': integer(value['revision'], 'revision', 1),
@@ -24,6 +27,7 @@ def normalize(value):
         'issue': text(value['issue'], 'issue', 2000),
         'resolution': text(value['resolution'], 'resolution', 2000),
         'state': value['state'],
+        'order_type': order_type,
     }
 
 

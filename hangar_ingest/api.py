@@ -5,6 +5,7 @@ from hangar_ingest.runs import batches, claims, inspection, journal, partitions,
 from hangar_ingest.runs.orchestrator import Pipeline
 from hangar_ingest.exports import releases, tabular, watermarks, transfer
 from hangar_ingest.exports.contracts import DeliveryContracts
+from hangar_ingest.studies import effectiveness, fleet
 
 
 class Application:
@@ -99,6 +100,20 @@ class Application:
             'inspect.lineage': (inspection.lineage, {'release_id'}, set()),
             'journal.verify': (journal.verify, set(), set()),
             'journal.page': (journal.page, set(), {'after', 'limit'}),
+            'fleet.register': (fleet.register, {'aircraft', 'aircraft_type'}, {'revision'}),
+            'fleet.get': (fleet.get, {'aircraft'}, set()),
+            'fleet.list': (fleet.listing, set(), {'aircraft_type'}),
+            'effectiveness.run': (effectiveness.run, {'study_id'}, {
+                'aircraft', 'aircraft_types', 'order_types', 'components', 'metrics', 'order_ids',
+                'start', 'end', 'window_seconds', 'resample_seconds', 'minimum_buckets',
+                'minimum_coverage_ratio', 'minimum_aircraft', 'bootstrap_replicates',
+                'confidence_level', 'bootstrap_seed', 'direction',
+            }),
+            'effectiveness.get': (effectiveness.get, {'study_id'}, {'revision'}),
+            'effectiveness.list': (effectiveness.listing, set(), set()),
+            'effectiveness.revisions': (effectiveness.revisions, {'study_id'}, set()),
+            'effectiveness.compare': (effectiveness.compare, {'study_id', 'before', 'after'}, set()),
+            'effectiveness.explain': (effectiveness.explain_event, {'study_id', 'event_id'}, {'revision'}),
         }
         self.bound = {
             'source.register': (self.sources.register, {'manifest_id', 'source', 'start', 'end', 'events'}, {'revision'}),
